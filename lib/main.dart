@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 
 import 'api.dart';
+import 'recovery_dialog.dart';
 
 const blue = Color(0xff003d6c);
 const orange = Color(0xffe27425);
@@ -65,14 +66,14 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   final form = GlobalKey<FormState>();
-  final email = TextEditingController();
+  final cpf = TextEditingController();
   final password = TextEditingController();
   bool busy = false;
   String? error;
 
   @override
   void dispose() {
-    email.dispose();
+    cpf.dispose();
     password.dispose();
     super.dispose();
   }
@@ -84,7 +85,7 @@ class _LoginPageState extends State<LoginPage> {
       error = null;
     });
     try {
-      final name = await widget.api.login(email.text.trim(), password.text);
+      final name = await widget.api.login(cpf.text.trim(), password.text);
       if (mounted) widget.onLogin(name);
     } catch (e) {
       if (!mounted) return;
@@ -92,7 +93,7 @@ class _LoginPageState extends State<LoginPage> {
         () => error = switch (e) {
           PortalError(status: 403) =>
             'O aplicativo é exclusivo para funcionários.',
-          PortalError(status: 400 || 401) => 'Confira seu e-mail e sua senha.',
+          PortalError(status: 400 || 401) => 'Confira seu CPF e sua senha.',
           PortalError(status: 429) =>
             'Muitas tentativas. Aguarde e tente novamente.',
           _ => 'Não foi possível entrar. Tente novamente.',
@@ -136,17 +137,21 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       const SizedBox(height: 20),
                       TextFormField(
-                        controller: email,
-                        keyboardType: TextInputType.emailAddress,
+                        controller: cpf,
+                        keyboardType: TextInputType.number,
                         autofillHints: const [AutofillHints.username],
-                        maxLength: 254,
+                        maxLength: 14,
                         decoration: const InputDecoration(
-                          labelText: 'E-mail',
+                          labelText: 'CPF',
+                          hintText: '000.000.000-00',
                           counterText: '',
                         ),
-                        validator: (value) => (value ?? '').trim().contains('@')
+                        validator: (value) =>
+                            RegExp(
+                              r'^(?:[0-9]{11}|[0-9]{3}\.[0-9]{3}\.[0-9]{3}-[0-9]{2})$',
+                            ).hasMatch((value ?? '').trim())
                             ? null
-                            : 'Informe seu e-mail.',
+                            : 'Informe um CPF com 11 dígitos.',
                       ),
                       const SizedBox(height: 14),
                       TextFormField(
@@ -177,6 +182,16 @@ class _LoginPageState extends State<LoginPage> {
                       FilledButton(
                         onPressed: busy ? null : signIn,
                         child: Text(busy ? 'Entrando…' : 'Entrar'),
+                      ),
+                      TextButton(
+                        onPressed: busy
+                            ? null
+                            : () => showDialog<void>(
+                                context: context,
+                                barrierDismissible: false,
+                                builder: (_) => RecoveryDialog(api: widget.api),
+                              ),
+                        child: const Text('Esqueci minha senha'),
                       ),
                     ],
                   ),

@@ -45,14 +45,14 @@ class PortalApi {
     return bytes.takeBytes();
   }
 
-  Future<String> login(String email, String senha) async {
+  Future<String> login(String cpf, String senha) async {
     try {
       final login = jsonDecode(
         utf8.decode(
           await _request(
             'auth/login',
             method: 'POST',
-            body: {'email': email, 'senha': senha},
+            body: {'cpf': cpf, 'senha': senha},
           ),
         ),
       ) as Map;
@@ -64,6 +64,15 @@ class PortalApi {
       token = null;
       rethrow;
     }
+  }
+
+  Future<String> recoverPassword(String email) async {
+    final response = await _request(
+      'auth/recuperar-senha',
+      method: 'POST',
+      body: {'email': email},
+    );
+    return (jsonDecode(utf8.decode(response)) as Map)['mensagem'] as String;
   }
 
   Future<void> logout() async {
