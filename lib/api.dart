@@ -7,6 +7,10 @@ class PortalError implements Exception {
   final int status;
 }
 
+class PortalUnavailable implements Exception {
+  const PortalUnavailable();
+}
+
 class PortalApi {
   PortalApi(this.base);
   final Uri base;
@@ -18,7 +22,12 @@ class PortalApi {
     String method = 'GET',
     Object? body,
   }) async {
-    final request = await _client.openUrl(method, base.resolve(route));
+    final HttpClientRequest request;
+    try {
+      request = await _client.openUrl(method, base.resolve(route));
+    } on SocketException {
+      throw const PortalUnavailable();
+    }
     request.followRedirects = false;
     final session = token;
     if (session != null)
@@ -57,6 +66,9 @@ class PortalApi {
         ),
       ) as Map;
       token = login['access_token'] as String;
+      if (login['permissoes'] == 'field' && login['nome'] is String) {
+        return login['nome'] as String;
+      }
       final user = jsonDecode(utf8.decode(await _request('auth/me'))) as Map;
       if (user['permissoes'] != 'field') throw const PortalError(403);
       return user['nome'] as String;

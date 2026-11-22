@@ -96,6 +96,8 @@ class _LoginPageState extends State<LoginPage> {
           PortalError(status: 400 || 401) => 'Confira seu CPF e sua senha.',
           PortalError(status: 429) =>
             'Muitas tentativas. Aguarde e tente novamente.',
+          PortalUnavailable() => 'Não foi possível conectar à API do app. Confira a conexão e tente novamente.',
+          PortalError(status: >= 500) => 'O serviço de login está indisponível. Tente novamente em instantes.',
           _ => 'Não foi possível entrar. Tente novamente.',
         },
       );
@@ -224,6 +226,8 @@ class _EmployeePageState extends State<EmployeePage> {
   int selected = 0;
   bool signingOut = false;
 
+  void openTab(int tab) => setState(() => selected = tab);
+
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
@@ -249,27 +253,100 @@ class _EmployeePageState extends State<EmployeePage> {
       ],
     ),
     body: SafeArea(
-      child: PortalPage(
-        key: ValueKey(selected),
-        api: widget.api,
-        name: widget.name,
-        training: selected == 1,
-        onExit: widget.onExit,
-      ),
+      child: selected == 0
+          ? EmployeeHome(name: widget.name, onOpen: openTab)
+          : PortalPage(
+              key: ValueKey(selected),
+              api: widget.api,
+              name: widget.name,
+              training: selected == 2,
+              onExit: widget.onExit,
+            ),
     ),
     bottomNavigationBar: NavigationBar(
       selectedIndex: selected,
-      onDestinationSelected: (value) => setState(() => selected = value),
+      onDestinationSelected: openTab,
       destinations: const [
         NavigationDestination(
+          icon: Icon(Icons.home_outlined),
+          selectedIcon: Icon(Icons.home),
+          label: 'Início',
+        ),
+        NavigationDestination(
           icon: Icon(Icons.health_and_safety_outlined),
-          label: 'Meus EPIs',
+          selectedIcon: Icon(Icons.health_and_safety),
+          label: 'EPIs',
         ),
         NavigationDestination(
           icon: Icon(Icons.school_outlined),
-          label: 'Meus treinamentos',
+          selectedIcon: Icon(Icons.school),
+          label: 'Treinamentos',
         ),
       ],
+    ),
+  );
+}
+
+class EmployeeHome extends StatelessWidget {
+  const EmployeeHome({super.key, required this.name, required this.onOpen});
+
+  final String name;
+  final ValueChanged<int> onOpen;
+
+  @override
+  Widget build(BuildContext context) => ListView(
+    padding: const EdgeInsets.all(20),
+    children: [
+      Text(
+        'Olá, $name',
+        style: Theme.of(context).textTheme.headlineMedium
+            ?.copyWith(color: blue, fontWeight: FontWeight.bold),
+      ),
+      const SizedBox(height: 20),
+      shortcut(
+        title: 'Meus EPIs',
+        subtitle: 'Equipamentos, fichas de entrega e relatos.',
+        icon: Icons.health_and_safety_outlined,
+        color: blue,
+        tab: 1,
+      ),
+      const SizedBox(height: 12),
+      shortcut(
+        title: 'Meus treinamentos',
+        subtitle: 'Treinamentos, situação e vencimentos.',
+        icon: Icons.school_outlined,
+        color: orange,
+        tab: 2,
+      ),
+    ],
+  );
+
+  Widget shortcut({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+    required int tab,
+  }) => Card(
+    color: Colors.white,
+    margin: EdgeInsets.zero,
+    elevation: 0,
+    shape: RoundedRectangleBorder(
+      side: const BorderSide(color: line),
+      borderRadius: BorderRadius.circular(14),
+    ),
+    clipBehavior: Clip.antiAlias,
+    child: ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      leading: CircleAvatar(
+        backgroundColor: color.withValues(alpha: .12),
+        foregroundColor: color,
+        child: Icon(icon),
+      ),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+      subtitle: Text(subtitle),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () => onOpen(tab),
     ),
   );
 }
