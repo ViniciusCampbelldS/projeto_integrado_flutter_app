@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 
 import 'api.dart';
+import 'admin_page.dart';
 import 'recovery_dialog.dart';
 
 const blue = Color(0xff003d6c);
@@ -32,6 +33,7 @@ class _MarAppState extends State<MarApp> {
 
   void endSession() => setState(() {
     widget.api.token = null;
+    widget.api.role = null;
     name = null;
   });
 
@@ -51,6 +53,8 @@ class _MarAppState extends State<MarApp> {
             api: widget.api,
             onLogin: (value) => setState(() => name = value),
           )
+        : widget.api.role == 'ADM'
+        ? AdminPage(api: widget.api, name: name!, onExit: endSession)
         : EmployeePage(api: widget.api, name: name!, onExit: endSession),
   );
 }
@@ -92,7 +96,7 @@ class _LoginPageState extends State<LoginPage> {
       setState(
         () => error = switch (e) {
           PortalError(status: 403) =>
-            'O aplicativo é exclusivo para funcionários.',
+            'Seu perfil não tem acesso ao aplicativo.',
           PortalError(status: 400 || 401) => 'Confira seu CPF e sua senha.',
           PortalError(status: 429) =>
             'Muitas tentativas. Aguarde e tente novamente.',
@@ -554,10 +558,7 @@ class _PortalPageState extends State<PortalPage> {
           spacing: 8,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            StatusBadge(
-              item['substituido'] == true ? 'Substituído' : 'Em uso',
-              Colors.green.shade800,
-            ),
+            StatusBadge(equipmentStatus(item).$1, equipmentStatus(item).$2),
             TextButton.icon(
               icon: const Icon(Icons.edit_outlined),
               label: const Text('Relatar estado'),
@@ -609,6 +610,22 @@ String dateLabel(Object? value) {
   final date = DateTime.tryParse(value?.toString() ?? '');
   if (date == null) return '—';
   return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+}
+
+(String, Color) equipmentStatus(Map<String, dynamic> item) {
+  if (item['substituido'] == true) return ('Substituído', Colors.blueGrey);
+  final due = DateTime.tryParse(item['vencimento']?.toString() ?? '');
+  if (due == null) return ('Sem vencimento informado', Colors.blueGrey);
+  final now = DateTime.now();
+  final days = DateTime.utc(
+    due.year,
+    due.month,
+    due.day,
+  ).difference(DateTime.utc(now.year, now.month, now.day)).inDays;
+  if (days < 0) return ('Vencido', Colors.red.shade800);
+  if (days <= (item['diasAviso'] as num? ?? 30))
+    return ('Próximo do vencimento', Colors.brown);
+  return ('Em dia', Colors.green.shade800);
 }
 
 (String, Color) trainingStatus(Map<String, dynamic> item) {
